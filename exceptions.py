@@ -1,9 +1,3 @@
-class NoSendMessage(Exception):
-    """Ошибка отправки сообщения."""
-
-    pass
-
-
 class ConnectApiError(Exception):
     """Ошибка соединенеия с API."""
 
@@ -18,5 +12,11 @@ class InvalidRequest(Exception):
 
 class UnknownStatus(Exception):
     """Hеизвестный статус работы."""
+
+    pass
+
+
+class EmptyResponseAPI(Exception):
+    """Пустой ответ API."""
 
     pass
