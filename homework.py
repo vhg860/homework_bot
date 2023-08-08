@@ -1,9 +1,9 @@
+import http
 import logging
 import os
 import sys
 import time
-import http
-from logging import Formatter, StreamHandler
+from logging import FileHandler, Formatter, StreamHandler
 
 import requests
 import telegram
@@ -32,6 +32,8 @@ HOMEWORK_VERDICTS = {
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 handler = StreamHandler(stream=sys.stdout)
+ch = FileHandler(filename='main.log')
+ch.setLevel(logging.DEBUG)
 logger.addHandler(handler)
 formatter = Formatter(
     '%(asctime)s, %(levelname)s, %(message)s, %(funcName)s, %(lineno)s'
@@ -68,7 +70,9 @@ def get_api_answer(timestamp):
     try:
         response = requests.get(**params_request)
         if response.status_code != http.HTTPStatus.OK:
-            raise exceptions.InvalidRequest('Ошибка в получении запроса')
+            raise exceptions.InvalidRequest(
+                f'Ошибка в получении запроса {response.status_code}'
+            )
         return response.json()
     except requests.RequestException:
         raise exceptions.ConnectApiError('Ошибка ответа')
@@ -82,11 +86,10 @@ def check_response(response):
     if 'homeworks' not in response:
         raise exceptions.EmptyResponseAPI('Нет ключа homeworks')
     homework_list = response.get('homeworks')
-    if type(homework_list) != list:
+    if not isinstance(homework_list, list):
         raise TypeError('Значение ключа homeworks не list')
-    if not homework_list:
-        raise TypeError('Список пуст')
     logging.info('Запрос API прошел проверку')
+    return homework_list
 
 
 def parse_status(homework):
@@ -97,7 +100,6 @@ def parse_status(homework):
     homework_status = homework.get('status')
     if homework_status not in HOMEWORK_VERDICTS:
         massage_error = 'Неизвестный статус работы.'
-        logging.error(massage_error)
         raise KeyError(massage_error)
     verdict = HOMEWORK_VERDICTS[homework_status]
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
@@ -110,22 +112,30 @@ def main():
     timestamp = 0
     send_message(bot, 'Старт')
     current_report = {'name': '', 'output': ''}
+    prev_report = current_report.copy()
     while True:
         try:
             response = get_api_answer(timestamp)
-            check_response(response)
+            new_homeworks = check_response(response)
 
-            if len(response['homeworks']) > 0:
-                status = parse_status(response['homeworks'][0])
-                send_message(bot, status)
+            if new_homeworks:
+                current_report['name'] = new_homeworks[0]['homework_name']
+                current_report['output'] = parse_status(new_homeworks[0])
             else:
                 current_report = ('Новых работ нет')
+
+            if current_report != prev_report:
                 send_message(bot, current_report)
-                logging.info('Статус не изменился')
+                prev_report = current_report.copy()
+            else:
+                logging.debug('Статус не изменился.')
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
+            current_report['output'] = message
             logging.error(message)
-            send_message(bot, message)
+            if current_report != prev_report:
+                send_message(bot, current_report)
+                prev_report = current_report.copy()
         finally:
             time.sleep(RETRY_PERIOD)
 
