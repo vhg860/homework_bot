@@ -32,8 +32,8 @@ HOMEWORK_VERDICTS = {
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 handler = StreamHandler(stream=sys.stdout)
-ch = FileHandler(filename='main.log')
-ch.setLevel(logging.DEBUG)
+handler_file = FileHandler(filename='main.log')
+handler_file.setLevel(logging.DEBUG)
 logger.addHandler(handler)
 formatter = Formatter(
     '%(asctime)s, %(levelname)s, %(message)s, %(funcName)s, %(lineno)s'
@@ -85,11 +85,11 @@ def check_response(response):
         raise TypeError(f'Запрос к API вернул не словарь {response}')
     if 'homeworks' not in response:
         raise exceptions.EmptyResponseAPI('Нет ключа homeworks')
-    homework_list = response.get('homeworks')
-    if not isinstance(homework_list, list):
+    homeworks = response.get('homeworks')
+    if not isinstance(homeworks, list):
         raise TypeError('Значение ключа homeworks не list')
     logging.info('Запрос API прошел проверку')
-    return homework_list
+    return homeworks
 
 
 def parse_status(homework):
@@ -119,10 +119,10 @@ def main():
             new_homeworks = check_response(response)
 
             if new_homeworks:
-                current_report['name'] = new_homeworks[0]['homework_name']
                 current_report['output'] = parse_status(new_homeworks[0])
+                current_report['name'] = new_homeworks[0]['homework_name']
             else:
-                current_report = ('Новых работ нет')
+                current_report['output'] = ('Новых работ нет')
 
             if current_report != prev_report:
                 send_message(bot, current_report)
