@@ -23,6 +23,6 @@ pip install -r requirements.txt
 3. В папке с файлом homework.py выполните команду:
 ```
 python homework.py
-
+```
 ### Автор 
 [Дмитрий](https://github.com/vhg860)
