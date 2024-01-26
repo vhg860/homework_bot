@@ -111,31 +111,22 @@ def main():
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     timestamp = 0
     send_message(bot, 'Старт')
-    current_report = {'name': '', 'output': ''}
-    prev_report = current_report.copy()
     while True:
         try:
             response = get_api_answer(timestamp)
-            new_homeworks = check_response(response)
+            check_response(response)
 
-            if new_homeworks:
-                current_report['output'] = parse_status(new_homeworks[0])
-                current_report['name'] = new_homeworks[0]['homework_name']
+            if len(response['homeworks']) > 0:
+                status = parse_status(response['homeworks'][0])
+                send_message(bot, status)
             else:
-                current_report['output'] = ('Новых работ нет')
-
-            if current_report != prev_report:
+                current_report = ('Новых работ нет')
                 send_message(bot, current_report)
-                prev_report = current_report.copy()
-            else:
-                logging.debug('Статус не изменился.')
+                logging.info('Статус не изменился')
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
-            current_report['output'] = message
             logging.error(message)
-            if current_report != prev_report:
-                send_message(bot, current_report)
-                prev_report = current_report.copy()
+            send_message(bot, message)
         finally:
             time.sleep(RETRY_PERIOD)
 
